@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Shop Price List</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📱</text></svg>">
+    
+    <!-- React & Tailwind CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', 'Padauk', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Smooth transition for theme switching */
+        .theme-transition { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+        
+        /* Animation for Modal & Lists */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- CONFIGURATION ---
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSg4hKjvI3ohEvfT-VR-O-lJD5WqkDfxDdTY_dUJy7z3g0456i3V2Gg6K6itV7KQ0bzaqEGhPhVgzCR/pub?gid=0&single=true&output=csv";
+
+        const SHOP_INFO = {
+            name: "Universe Mobile",
+            logoUrl: "logo.png",
+            phone: "09750006581",
+            viber: "09750006582",
+            facebook: "Universe Movile",
+            facebookUrl: "https://www.facebook.com/UniverseMobileThaton",
+            address: "အမှတ် ၁၇ ၊ ဘင်လှိုင်လမ်းမတန်း ၊ အားကစားခန်းမရှေ့ ၊ သထုံမြို့"
+        };
+
+        const { useState, useEffect } = React;
+
+        // --- ICONS ---
+        const Icons = {
+            Search: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            Smartphone: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>,
+            Monitor: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>,
+            Headphones: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 14v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2Z"/><path d="M15 14v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2Z"/><path d="M4 14v-3a8 8 0 1 1 16 0v3"/></svg>,
+            RefreshCw: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
+            ShoppingBag: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+            WifiOff: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 2 22 22"/><path d="M8.5 8.5A6 6 0 0 1 12 8c2.1 0 4.1.8 5.6 2.1"/><path d="M5 5C8.8 2.3 15.2 2.3 19 5"/><path d="M10.4 10.4a4 4 0 0 1 4.2 4.2"/><path d="M12.7 15.8a1.9 1.9 0 0 1-1.4.2"/></svg>,
+            Loader2: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
+            Cpu: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/></svg>,
+            HardDrive: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>,
+            Info: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
+            Sun: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>,
+            Moon: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>,
+            Store: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></svg>,
+            Phone: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+            Facebook: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>,
+            MapPin: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+            MessageCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>,
+            X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+            List: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>,
+            Grid: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>,
+            Check: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        };
+
+        const Categories = [
+            { id: 'all', label: 'အားလုံး', icon: 'ShoppingBag' },
+            { id: 'new', label: 'ဖုန်းအသစ်', icon: 'Smartphone' },
+            { id: 'second', label: 'Good Second', icon: 'RefreshCw' },
+            { id: 'computer', label: 'ကွန်ပျူတာ', icon: 'Monitor' },
+            { id: 'accessories', label: 'ဆက်စပ်ပစ္စည်း', icon: 'Headphones' },
+        ];
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [products, setProducts] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [isDarkMode, setIsDarkMode] = useState(false);
+            const [showShopInfo, setShowShopInfo] = useState(false);
+            const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+
+            const fetchSheetData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(GOOGLE_SHEET_CSV_URL);
+                    if (!response.ok) throw new Error('Network error or Sheet not public');
+                    
+                    const text = await response.text();
+                    const lines = text.split('\n');
+                    const newProducts = [];
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+
+                        const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        const cleanParts = parts.map(p => p ? p.trim().replace(/^"|"$/g, '').replace(/""/g, '"') : '');
+                        
+                        if (cleanParts.length >= 3) {
+                            const category = cleanParts[0] || 'other';
+                            const brand = cleanParts[1] || '';
+                            const model = cleanParts[2] || 'Unknown Model';
+                            const ram = cleanParts[3] || '';
+                            const storage = cleanParts[4] || '';
+                            const price = cleanParts[5] || (cleanParts.length === 4 ? cleanParts[3] : 'Call');
+                            const info = cleanParts[6] || ''; 
+
+                            if (model) {
+                                newProducts.push({
+                                    id: i,
+                                    category: category.toLowerCase(),
+                                    brand,
+                                    name: model,
+                                    ram,
+                                    storage,
+                                    price,
+                                    info
+                                });
+                            }
+                        }
+                    }
+                    setProducts(newProducts);
+                } catch (err) {
+                    console.error("Fetch Error:", err);
+                    setError("Data ဆွဲမရပါ။ Hosting တင်ထားခြင်း ရှိ/မရှိ စစ်ဆေးပါ။");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchSheetData();
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    setIsDarkMode(true);
+                }
+                if (SHOP_INFO.logoUrl) {
+                    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+                    link.type = 'image/png';
+                    link.rel = 'icon';
+                    link.href = SHOP_INFO.logoUrl;
+                    document.getElementsByTagName('head')[0].appendChild(link);
+                }
+            }, []);
+
+            const filteredProducts = products.filter(product => {
+                const matchesCategory = activeTab === 'all' || product.category === activeTab;
+                const matchesSearch = (product.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+                                    (product.brand?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            const renderIcon = (name, className, size = 20) => {
+                const IconComp = Icons[name];
+                return IconComp ? <IconComp className={className} width={size} height={size} /> : null;
+            };
+
+            const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+            const getColorClass = (category, type) => {
+                const colors = {
+                    new: { border: 'border-green-500', bg: 'bg-green-500', text: 'text-green-600', bgSoft: 'bg-green-50' },
+                    second: { border: 'border-orange-500', bg: 'bg-orange-500', text: 'text-orange-600', bgSoft: 'bg-orange-50' },
+                    computer: { border: 'border-purple-500', bg: 'bg-purple-500', text: 'text-purple-600', bgSoft: 'bg-purple-50' },
+                    accessories: { border: 'border-pink-500', bg: 'bg-pink-500', text: 'text-pink-600', bgSoft: 'bg-pink-50' },
+                    default: { border: 'border-blue-500', bg: 'bg-blue-500', text: 'text-blue-600', bgSoft: 'bg-blue-50' }
+                };
+                return colors[category] || colors.default;
+            };
+
+            return (
+                <div className={`min-h-screen pb-10 theme-transition ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>
+                    
+                    {/* Header */}
+                    <div className="sticky top-0 z-30 shadow-md">
+                        <div className={`p-4 md:p-6 transition-all ${isDarkMode ? 'bg-gray-800 border-b border-gray-700' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white'}`}>
+                            <div className="max-w-4xl mx-auto">
+                                <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+                                    <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                                        {SHOP_INFO.logoUrl ? (
+                                            <img 
+                                                src={SHOP_INFO.logoUrl} 
+                                                alt="Logo" 
+                                                className="w-12 h-12 rounded-full object-cover border-2 border-white/30 shadow-sm"
+                                                onError={(e) => {e.target.style.display='none'}}
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                                {renderIcon('Smartphone', "", 24)}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h1 className={`text-xl md:text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : ''}`}>
+                                                {SHOP_INFO.name}
+                                            </h1>
+                                            <p className={`text-xs md:text-sm opacity-90 ${isDarkMode ? 'text-gray-400' : 'text-blue-100'}`}>
+                                                Price List
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setShowShopInfo(true)} className={`p-2 rounded-full transition backdrop-blur-sm ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-green-400' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+                                            {renderIcon('Store', "", 20)}
+                                        </button>
+                                        
+                                        {/* View Mode Toggle */}
+                                        <button onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')} className={`p-2 rounded-full transition backdrop-blur-sm ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-blue-400' : 'bg-white/10 hover:bg-white/20 text-white'}`} title={viewMode === 'list' ? 'Switch to Card View' : 'Switch to List View'}>
+                                            {viewMode === 'list' ? renderIcon('Grid', "", 20) : renderIcon('List', "", 20)}
+                                        </button>
+
+                                        <button onClick={toggleTheme} className={`p-2 rounded-full transition backdrop-blur-sm ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-yellow-400' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+                                            {isDarkMode ? renderIcon('Sun', "", 20) : renderIcon('Moon', "", 20)}
+                                        </button>
+                                        <button onClick={fetchSheetData} disabled={loading} className={`p-2 rounded-full transition backdrop-blur-sm ${loading ? 'animate-spin' : ''} ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+                                            {renderIcon('RefreshCw', "", 20)}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="relative">
+                                    <div className="absolute left-3 top-3.5 text-gray-400">
+                                        {renderIcon('Search', "", 20)}
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        placeholder="ရှာဖွေရန်..." 
+                                        className={`w-full py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-4 shadow-lg/20 transition-all ${
+                                            isDarkMode 
+                                            ? 'bg-gray-700 text-white focus:ring-blue-500/50 placeholder-gray-400' 
+                                            : 'bg-white text-gray-800 focus:ring-blue-300'
+                                        }`}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className={`backdrop-blur-sm border-b transition-colors ${isDarkMode ? 'bg-gray-900/95 border-gray-800' : 'bg-gray-100/95 border-gray-200'}`}>
+                            <div className="max-w-4xl mx-auto px-4 pt-3 pb-3">
+                                <div className="flex flex-wrap gap-2">
+                                {Categories.map((cat) => (
+                                    <button
+                                    key={cat.id}
+                                    onClick={() => setActiveTab(cat.id)}
+                                    className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-bold transition-all duration-300 ${
+                                        activeTab === cat.id 
+                                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-500/50 ring-offset-1 scale-105' 
+                                        : isDarkMode 
+                                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700' 
+                                            : 'bg-white text-gray-600 hover:bg-gray-200 border border-gray-200'
+                                    }`}
+                                    >
+                                    {renderIcon(cat.icon, "", 16)}
+                                    <span>{cat.label}</span>
+                                    </button>
+                                ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <main className="max-w-4xl mx-auto p-4 pt-6">
+                        {error && (
+                            <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm border ${isDarkMode ? 'bg-red-900/30 text-red-300 border-red-800' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                                {renderIcon('WifiOff', "", 16)}
+                                {error}
+                            </div>
+                        )}
+
+                        {loading && (
+                            <div className={`text-center py-20 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                <div className="animate-spin inline-block mb-2">
+                                    {renderIcon('Loader2', "", 40)}
+                                </div>
+                                <p>Loading...</p>
+                            </div>
+                        )}
+
+                        {!loading && filteredProducts.length === 0 && (
+                            <div className={`text-center py-20 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <div className="opacity-30 inline-block mb-4">
+                                    {renderIcon('Search', "", 48)}
+                                </div>
+                                <p>ရှာဖွေနေသော ပစ္စည်းမရှိပါ။</p>
+                            </div>
+                        )}
+                        
+                        {!loading && filteredProducts.length > 0 && (
+                            <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "flex flex-col gap-3"}>
+                            {filteredProducts.map((product) => {
+                                const colorTheme = getColorClass(product.category);
+                                
+                                // --- GRID VIEW (Original Card Style) ---
+                                if (viewMode === 'grid') {
+                                    return (
+                                        <div key={product.id} className={`animate-fade-in rounded-2xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border flex flex-col group relative overflow-hidden ${
+                                            isDarkMode 
+                                            ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
+                                            : 'bg-white border-gray-200 hover:border-blue-200'
+                                        }`}>
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorTheme.bg}`}></div>
+                                            <div className="flex justify-between items-center mb-2 pl-2">
+                                                <div className="flex gap-2">
+                                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full tracking-wider ${
+                                                        isDarkMode ? 'bg-gray-700 text-gray-300' : colorTheme.bgSoft + ' ' + colorTheme.text
+                                                    }`}>
+                                                        {product.category === 'new' ? 'New' : product.category}
+                                                    </span>
+                                                    {product.brand && (
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isDarkMode ? 'bg-blue-900/30 text-blue-300 border-blue-800' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                            {product.brand}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <h3 className={`text-lg font-bold leading-tight mb-3 pl-2 transition-colors ${isDarkMode ? 'text-gray-100 group-hover:text-blue-400' : 'text-gray-800 group-hover:text-blue-600'}`}>
+                                                {product.name}
+                                            </h3>
+                                            <div className="flex flex-wrap gap-2 mb-3 pl-2">
+                                                {(product.ram || product.storage) && (
+                                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-lg text-xs font-medium ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>
+                                                        {renderIcon('Cpu', "w-3.5 h-3.5")}
+                                                        <span>{product.ram} {product.ram && product.storage ? '|' : ''} {product.storage}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {product.info && (
+                                                <div className={`mx-2 mb-3 px-3 py-2 rounded-lg border text-xs flex items-start gap-2 ${isDarkMode ? 'bg-yellow-900/20 border-yellow-800/50 text-yellow-200' : 'bg-amber-50/70 border-amber-100/50 text-amber-800'}`}>
+                                                    <span className="mt-0.5">{renderIcon('Info', "w-3 h-3 shrink-0")}</span>
+                                                    <span className="leading-relaxed">{product.info}</span>
+                                                </div>
+                                            )}
+                                            <div className={`mt-auto pt-3 border-t border-dashed pl-2 flex items-center justify-between ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                                                <div className="text-xs font-medium uppercase text-gray-400">Price</div>
+                                                <div className={`font-bold text-xl tracking-tight ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                    {product.price} <span className="text-xs font-normal text-gray-500">Ks</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                } 
+                                
+                                // --- LIST VIEW (New Design) ---
+                                else {
+                                    return (
+                                        <div key={product.id} className={`animate-slide-up group relative rounded-xl p-3 md:p-4 shadow-sm border transition-all duration-200 ${
+                                            isDarkMode 
+                                            ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800 hover:border-gray-600' 
+                                            : 'bg-white border-gray-200 hover:shadow-md hover:border-blue-200'
+                                        }`}>
+                                            <div className={`absolute left-0 top-3 bottom-3 w-1 rounded-r ${colorTheme.bg}`}></div>
+                                            
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pl-3">
+                                                {/* Left Side: Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        {/* Tiny Category Badge */}
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide border ${
+                                                            isDarkMode 
+                                                            ? 'border-gray-600 text-gray-400' 
+                                                            : 'border-gray-200 text-gray-500 bg-gray-50'
+                                                        }`}>
+                                                            {product.category === 'new' ? 'NEW' : product.category === 'second' ? '2ND' : 'ACC'}
+                                                        </span>
+                                                        {product.brand && <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{product.brand}</span>}
+                                                    </div>
+                                                    
+                                                    {/* Title */}
+                                                    <h3 className={`text-base md:text-lg font-bold truncate pr-2 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                                                        {product.name}
+                                                    </h3>
+                                                    
+                                                    {/* Specs Row */}
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm">
+                                                        {(product.ram || product.storage) && (
+                                                            <div className={`flex items-center gap-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                                {renderIcon('HardDrive', "w-3.5 h-3.5")}
+                                                                <span>
+                                                                    {product.ram ? `${product.ram}` : ''} 
+                                                                    {(product.ram && product.storage) ? ' + ' : ''} 
+                                                                    {product.storage}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {product.info && (
+                                                            <div className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${
+                                                                isDarkMode ? 'bg-yellow-900/30 text-yellow-500' : 'bg-amber-50 text-amber-600'
+                                                            }`}>
+                                                                {renderIcon('Info', "w-3 h-3")}
+                                                                <span className="truncate max-w-[150px] md:max-w-none">{product.info}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Side: Price */}
+                                                <div className="flex items-end md:items-center justify-between md:justify-end gap-4 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-dashed border-gray-200 dark:border-gray-700 md:pl-4">
+                                                    <div className={`text-right ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                                        <div className="text-lg md:text-xl font-bold font-mono tracking-tight leading-none">
+                                                            {product.price} <span className="text-xs font-sans text-gray-500 font-normal">Ks</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Shop Info Modal */}
+                    {showShopInfo && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowShopInfo(false)}>
+                            <div className={`w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden relative ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'}`} onClick={e => e.stopPropagation()}>
+                                <div className={`p-4 border-b flex justify-between items-center ${isDarkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-gray-50'}`}>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">
+                                        <span className="text-blue-600">{renderIcon('Store', "", 20)}</span>
+                                        Shop Information
+                                    </h2>
+                                    <button onClick={() => setShowShopInfo(false)} className={`p-1.5 rounded-full transition ${isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}>
+                                        {renderIcon('X', "", 20)}
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-5">
+                                    <div className="text-center mb-6">
+                                        <div className="w-24 h-24 mx-auto mb-3 relative">
+                                            {SHOP_INFO.logoUrl ? (
+                                                <img src={SHOP_INFO.logoUrl} alt="Shop Logo" className="w-full h-full rounded-full object-cover border-4 border-blue-100 shadow-md" onError={(e) => {e.target.style.display = 'none';}}/>
+                                            ) : (
+                                                <div className="w-full h-full bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                                                    {renderIcon('Store', "", 40)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h3 className="text-xl font-bold">{SHOP_INFO.name}</h3>
+                                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Welcome to our store</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600'}`}>{renderIcon('Phone', "", 20)}</div>
+                                            <div><p className="text-xs text-gray-400 font-medium uppercase">Phone</p><a href={`tel:${SHOP_INFO.phone}`} className="font-semibold hover:text-blue-500 transition">{SHOP_INFO.phone}</a></div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-600'}`}>{renderIcon('MessageCircle', "", 20)}</div>
+                                            <div><p className="text-xs text-gray-400 font-medium uppercase">Viber</p><p className="font-semibold">{SHOP_INFO.viber}</p></div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>{renderIcon('Facebook', "", 20)}</div>
+                                            <div><p className="text-xs text-gray-400 font-medium uppercase">Facebook</p><a href={SHOP_INFO.facebookUrl} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-blue-500 transition block truncate max-w-[200px]">{SHOP_INFO.facebook}</a></div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`}>{renderIcon('MapPin', "", 20)}</div>
+                                            <div><p className="text-xs text-gray-400 font-medium uppercase">Address</p><p className="font-semibold leading-tight">{SHOP_INFO.address}</p></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
